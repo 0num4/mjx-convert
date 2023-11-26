@@ -4,7 +4,7 @@ venv:
 	venv/bin/python3 -m pip install -r requirements.txt
 
 install:
-	arch -x86_64 /usr/bin/python3 setup.py install
+	python3 setup.py install
 
 cli-test:
 	echo "From mjlog => mjxproto"

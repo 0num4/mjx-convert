@@ -1,15 +1,23 @@
 [tool.poetry]
-name = "mjx-convert"
-version = "0.1.0"
-description = ""
-authors = ["0num4 <r.oonuma@matsuri-tech.com>"]
-readme = "README.md"
-packages = [{include = "mjx_convert"}]
+name = "mjxc"
+version = "0.0.1"
+description = "mjx-convert"
+authors = ["Mjx Project Team <koyamada-s@sys.i.kyoto-u.ac.jp>"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.8"
+click = "8.0.1"
+google = "3.0.0"
+protobuf = "3.17.3"
+grpcio = "1.39.0"
+tenhou_wall_reproducer = "*"
 
+[tool.poetry.dev-dependencies]
+pytest = "*"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+mjxc = "converter.main:main"
