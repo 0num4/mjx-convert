@@ -67,22 +67,16 @@ class MjlogDecoder:
         # shuffle = root.iter("SHUFFLE")
         go = root.iter("GO")
         for child in go:
+            if int(child.attrib["type"]) != 169:  # only use 鳳南赤
+                return []
             assert int(child.attrib["type"]) == 169  # only use 鳳南赤
         # TODO(sotetsuk): if there are > 2 "UN", some user became offline
         un = root.iter("UN")
         for child in un:
-            state_.public_observation.player_ids.append(
-                urllib.parse.unquote(child.attrib["n0"])
-            )
-            state_.public_observation.player_ids.append(
-                urllib.parse.unquote(child.attrib["n1"])
-            )
-            state_.public_observation.player_ids.append(
-                urllib.parse.unquote(child.attrib["n2"])
-            )
-            state_.public_observation.player_ids.append(
-                urllib.parse.unquote(child.attrib["n3"])
-            )
+            state_.public_observation.player_ids.append(urllib.parse.unquote(child.attrib["n0"]))
+            state_.public_observation.player_ids.append(urllib.parse.unquote(child.attrib["n1"]))
+            state_.public_observation.player_ids.append(urllib.parse.unquote(child.attrib["n2"]))
+            state_.public_observation.player_ids.append(urllib.parse.unquote(child.attrib["n3"]))
             break
         # taikyoku = root.iter("TAIKYOKU")
 
@@ -132,21 +126,15 @@ class MjlogDecoder:
         """
         key, val = kv[0]
         assert key == "INIT"
-        round_, honba, riichi, dice1, dice2, dora = [
-            int(x) for x in val["seed"].split(",")
-        ]
+        round_, honba, riichi, dice1, dice2, dora = [int(x) for x in val["seed"].split(",")]
         self.state.public_observation.init_score.round = round_
         self.state.public_observation.init_score.honba = honba
         self.state.public_observation.init_score.riichi = riichi
-        self.state.public_observation.init_score.tens[:] = [
-            int(x) * 100 for x in val["ten"].split(",")
-        ]
+        self.state.public_observation.init_score.tens[:] = [int(x) * 100 for x in val["ten"].split(",")]
         self.state.round_terminal.final_score.round = round_
         self.state.round_terminal.final_score.honba = honba
         self.state.round_terminal.final_score.riichi = riichi
-        self.state.round_terminal.final_score.tens[:] = [
-            int(x) * 100 for x in val["ten"].split(",")
-        ]
+        self.state.round_terminal.final_score.tens[:] = [int(x) * 100 for x in val["ten"].split(",")]
         self.state.hidden_state.wall[:] = wall
         self.state.public_observation.dora_indicators.append(dora)
         self.state.hidden_state.ura_dora_indicators.append(wall[131])
@@ -155,31 +143,17 @@ class MjlogDecoder:
             self.state.private_observations.append(
                 mjxproto.PrivateObservation(
                     who=i,
-                    init_hand=mjxproto.Hand(
-                        closed_tiles=[int(x) for x in val["hai" + str(i)].split(",")]
-                    ),
+                    init_hand=mjxproto.Hand(closed_tiles=[int(x) for x in val["hai" + str(i)].split(",")]),
                 )
             )
         for i in range(4 * 12):
-            assert (
-                wall[i]
-                in self.state.private_observations[
-                    ((i // 4) + round_) % 4
-                ].init_hand.closed_tiles
-            )
+            assert wall[i] in self.state.private_observations[((i // 4) + round_) % 4].init_hand.closed_tiles
         for i in range(4 * 12, 4 * 13):
-            assert (
-                wall[i]
-                in self.state.private_observations[
-                    (i + round_) % 4
-                ].init_hand.closed_tiles
-            )
+            assert wall[i] in self.state.private_observations[(i + round_) % 4].init_hand.closed_tiles
 
         curr_hands = []
         for i in range(4):
-            curr_hands.append(
-                Hand([int(x) for x in val["hai" + str(i)].split(",")], [])
-            )
+            curr_hands.append(Hand([int(x) for x in val["hai" + str(i)].split(",")], []))
         event = None
         num_kan_dora = 0
         self.last_drawer = None
@@ -195,9 +169,7 @@ class MjlogDecoder:
                 self.last_drawer, self.last_draw = who, draw
             elif key != "DORA" and key[0] in ["D", "E", "F", "G"]:  # discard
                 who, discard = MjlogDecoder.parse_discard(key)
-                event = MjlogDecoder.make_discard_event(
-                    who, discard, self.last_drawer, self.last_draw
-                )
+                event = MjlogDecoder.make_discard_event(who, discard, self.last_drawer, self.last_draw)
                 curr_hands[int(who)].discard(discard)
                 self.last_drawer, self.last_draw = None, None
             elif key == "N":  # open
@@ -235,9 +207,7 @@ class MjlogDecoder:
             elif key == "RYUUKYOKU":
                 reach_terminal = True
                 self.state.round_terminal.CopyFrom(
-                    MjlogDecoder.update_terminal_by_no_winner(
-                        self.state.round_terminal, val, curr_hands
-                    )
+                    MjlogDecoder.update_terminal_by_no_winner(self.state.round_terminal, val, curr_hands)
                 )
                 nowinner_type = MjlogDecoder.parse_no_winner_type(val)
                 if nowinner_type == mjxproto.EVENT_TYPE_ABORTIVE_DRAW_NINE_TERMINALS:
@@ -253,31 +223,21 @@ class MjlogDecoder:
                 win_tile = int(val["machi"])
                 event = mjxproto.Event(
                     who=who,
-                    type=mjxproto.EVENT_TYPE_TSUMO
-                    if who == from_who
-                    else mjxproto.EVENT_TYPE_RON,
+                    type=mjxproto.EVENT_TYPE_TSUMO if who == from_who else mjxproto.EVENT_TYPE_RON,
                     tile=win_tile,
                 )
                 win = MjlogDecoder.make_win(
                     val,
                     who,
                     from_who,
-                    self.state.hidden_state.ura_dora_indicators[:]
-                    if is_under_riichi[who]
-                    else None,
+                    self.state.hidden_state.ura_dora_indicators[:] if is_under_riichi[who] else None,
                     modify,
                 )
-                assert self.state.public_observation.dora_indicators == [
-                    int(x) for x in val["doraHai"].split(",")
-                ]
+                assert self.state.public_observation.dora_indicators == [int(x) for x in val["doraHai"].split(",")]
                 if "doraHaiUra" in val:
-                    assert self.state.hidden_state.ura_dora_indicators == [
-                        int(x) for x in val["doraHaiUra"].split(",")
-                    ]
+                    assert self.state.hidden_state.ura_dora_indicators == [int(x) for x in val["doraHaiUra"].split(",")]
                 self.state.round_terminal.CopyFrom(
-                    MjlogDecoder.update_terminal_by_win(
-                        self.state.round_terminal, win, val
-                    )
+                    MjlogDecoder.update_terminal_by_win(self.state.round_terminal, win, val)
                 )
                 if who != from_who:  # ron
                     curr_hands[who].add(win_tile)
@@ -298,8 +258,7 @@ class MjlogDecoder:
             self.state.ClearField("round_terminal")
         else:
             assert (
-                sum(self.state.round_terminal.final_score.tens)
-                + self.state.round_terminal.final_score.riichi * 1000
+                sum(self.state.round_terminal.final_score.tens) + self.state.round_terminal.final_score.riichi * 1000
                 == 100000
             )
 
@@ -330,9 +289,7 @@ class MjlogDecoder:
         terminal: mjxproto.RoundTerminal, val: Dict[str, str], hands: List[Hand]
     ) -> mjxproto.RoundTerminal:
         ba, riichi = [int(x) for x in val["ba"].split(",")]
-        terminal.no_winner.ten_changes[:] = [
-            int(x) * 100 for i, x in enumerate(val["sc"].split(",")) if i % 2 == 1
-        ]
+        terminal.no_winner.ten_changes[:] = [int(x) * 100 for i, x in enumerate(val["sc"].split(",")) if i % 2 == 1]
         for i in range(4):
             terminal.final_score.tens[i] += terminal.no_winner.ten_changes[i]
         for i in range(4):
@@ -342,14 +299,10 @@ class MjlogDecoder:
             terminal.no_winner.tenpais.append(
                 mjxproto.TenpaiHand(
                     who=i,
-                    hand=mjxproto.Hand(
-                        closed_tiles=hands[i].closed_tiles, opens=hands[i].opens
-                    ),
+                    hand=mjxproto.Hand(closed_tiles=hands[i].closed_tiles, opens=hands[i].opens),
                 )
             )
-            assert [int(x) for x in hands[i].closed_tiles] == [
-                int(x) for x in val[hai_key].split(",")
-            ]
+            assert [int(x) for x in hands[i].closed_tiles] == [int(x) for x in val[hai_key].split(",")]
         if "owari" in val:
             # オーラス流局時のリーチ棒はトップ総取り
             # TODO: 同着トップ時には上家が総取りしてるが正しい？
@@ -358,9 +311,7 @@ class MjlogDecoder:
                 max_ten = max(terminal.final_score.tens)
                 for i in range(4):
                     if terminal.final_score.tens[i] == max_ten:
-                        terminal.final_score.tens[i] += (
-                            1000 * terminal.final_score.riichi
-                        )
+                        terminal.final_score.tens[i] += 1000 * terminal.final_score.riichi
                         break
             terminal.final_score.riichi = 0
             terminal.is_game_over = True
@@ -374,12 +325,7 @@ class MjlogDecoder:
         last_draw: Optional[int],
     ) -> mjxproto.Event:
         type_ = mjxproto.EVENT_TYPE_DISCARD
-        if (
-            last_drawer is not None
-            and last_draw is not None
-            and last_drawer == who
-            and last_draw == discard
-        ):
+        if last_drawer is not None and last_draw is not None and last_drawer == who and last_draw == discard:
             type_ = mjxproto.EVENT_TYPE_TSUMOGIRI
         event = mjxproto.Event(
             who=who,
@@ -436,9 +382,7 @@ class MjlogDecoder:
         if ura_dora_indicators is not None:
             win.ura_dora_indicators[:] = ura_dora_indicators
 
-        win.ten_changes[:] = [
-            int(x) * 100 for i, x in enumerate(val["sc"].split(",")) if i % 2 == 1
-        ]
+        win.ten_changes[:] = [int(x) * 100 for i, x in enumerate(val["sc"].split(",")) if i % 2 == 1]
         win.fu, win.ten, _ = [int(x) for x in val["ten"].split(",")]
         if modify and "yakuman" in val:
             win.fu = 0
@@ -516,9 +460,7 @@ def reproduce_wall_from_mjlog(mjlog_str: str) -> List[Tuple[List[int], List[int]
     for i, child in enumerate(shuffle):
         assert i == 0
         x = child.attrib["seed"].split(",")
-        assert (
-            x[0] == "mt19937ar-sha512-n288-base64"
-        ), f"seed = {x}\nmjlog = {mjlog_str}"
+        assert x[0] == "mt19937ar-sha512-n288-base64", f"seed = {x}\nmjlog = {mjlog_str}"
         assert len(x) == 2, f"seed = {x}\nmjlog = {mjlog_str}"
         seed = repr(x[1])[1:-1]
     assert len(seed) != 0, "Old (~2009.xx) log does not have SHUFFLE item"
